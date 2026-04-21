@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { pool } from "../db/pool.js";
+import { reviewSchema } from "../schemas.js";
 
 const router = Router();
 
@@ -10,42 +11,68 @@ router.get("/queue", async (_req: Request, res: Response) => {
      FROM review_queue rq
      JOIN onboardings o ON rq.onboarding_id = o.id
      WHERE rq.reviewer_action IS NULL
-     ORDER BY rq.created_at DESC`
+     ORDER BY rq.created_at DESC
+     LIMIT 100`
   );
   res.json(result.rows);
 });
 
-// POST /api/review/:onboardingId
+// POST /api/review/:onboardingId — transactional review with row locking
 router.post("/:onboardingId", async (req: Request, res: Response) => {
   const { onboardingId } = req.params;
-  const { action, notes, stepId } = req.body;
-
-  if (!["approve", "reject", "edit"].includes(action)) {
-    res.status(400).json({ error: "action must be approve, reject, or edit" });
+  const parsed = reviewSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
     return;
   }
 
-  await pool.query(
-    `UPDATE review_queue SET reviewer_action = $2, reviewer_notes = $3, reviewed_at = NOW()
-     WHERE onboarding_id = $1 AND ($4::uuid IS NULL OR step_id = $4)`,
-    [onboardingId, action, notes, stepId || null]
-  );
+  const { action, notes, stepId } = parsed.data;
+  const client = await pool.connect();
 
-  if (action === "approve") {
-    // Check if all review items for this onboarding are resolved
-    const pending = await pool.query(
-      `SELECT COUNT(*) FROM review_queue WHERE onboarding_id = $1 AND reviewer_action IS NULL`,
-      [onboardingId]
-    );
-    if (parseInt(pending.rows[0].count) === 0) {
-      await pool.query(
-        `UPDATE onboardings SET status = 'completed', updated_at = NOW() WHERE id = $1`,
+  try {
+    await client.query("BEGIN");
+
+    // Lock the specific review item(s) to prevent race conditions
+    if (stepId) {
+      await client.query(
+        `SELECT id FROM review_queue WHERE onboarding_id = $1 AND step_id = $2 AND reviewer_action IS NULL FOR UPDATE`,
+        [onboardingId, stepId]
+      );
+      await client.query(
+        `UPDATE review_queue SET reviewer_action = $2, reviewer_notes = $3, reviewed_at = NOW()
+         WHERE onboarding_id = $1 AND step_id = $4 AND reviewer_action IS NULL`,
+        [onboardingId, action, notes || null, stepId]
+      );
+    } else {
+      // Without stepId, require explicit confirmation — don't mass-approve
+      res.status(400).json({ error: "stepId is required to prevent accidental mass-approval" });
+      await client.query("ROLLBACK");
+      client.release();
+      return;
+    }
+
+    if (action === "approve") {
+      const pending = await client.query(
+        `SELECT COUNT(*) FROM review_queue WHERE onboarding_id = $1 AND reviewer_action IS NULL`,
         [onboardingId]
       );
+      if (parseInt(pending.rows[0].count) === 0) {
+        await client.query(
+          `UPDATE onboardings SET status = 'completed', updated_at = NOW() WHERE id = $1`,
+          [onboardingId]
+        );
+      }
     }
-  }
 
-  res.json({ success: true, action });
+    await client.query("COMMIT");
+    res.json({ success: true, action });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    const message = err instanceof Error ? err.message : "Review failed";
+    res.status(500).json({ error: message });
+  } finally {
+    client.release();
+  }
 });
 
 export default router;

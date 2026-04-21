@@ -1,33 +1,22 @@
 import { Router, Request, Response } from "express";
+import { intakeSchema } from "../schemas.js";
 import { runPipeline } from "../services/pipeline.js";
 
 const router = Router();
 
 router.post("/", async (req: Request, res: Response) => {
+  const parsed = intakeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors });
+    return;
+  }
+
   try {
-    const { providerName, businessName, state, address, phone, email, facilityType, ageGroups, maxCapacity } = req.body;
-
-    if (!providerName || !state) {
-      res.status(400).json({ error: "providerName and state are required" });
-      return;
-    }
-
-    const onboardingId = await runPipeline({
-      providerName,
-      businessName,
-      state: state.toUpperCase(),
-      address,
-      phone,
-      email,
-      facilityType,
-      ageGroups,
-      maxCapacity,
-    });
-
+    const onboardingId = await runPipeline(parsed.data);
     res.json({ onboardingId, status: "started" });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+    res.status(500).json({ error: message });
   }
 });
 

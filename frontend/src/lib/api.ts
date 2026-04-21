@@ -1,12 +1,14 @@
-// API URL: use same-origin when on VPS, fallback for dev
+// API URL: derive from current hostname (API always on port 4001)
 const API_URL = typeof window !== "undefined"
   ? `${window.location.protocol}//${window.location.hostname}:4001`
-  : (process.env.BACKEND_URL || "http://82.25.76.54:4001");
+  : (process.env.BACKEND_URL || "http://localhost:4001");
+
+const API_KEY = "pp-demo-key-2026";
 
 export async function submitIntake(data: IntakeFormData) {
   const res = await fetch(`${API_URL}/api/intake`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -37,19 +39,18 @@ export async function getReviewQueue() {
   return res.json();
 }
 
-export async function submitReview(onboardingId: string, action: string, notes?: string) {
+export async function submitReview(onboardingId: string, action: string, notes?: string, stepId?: string) {
   const res = await fetch(`${API_URL}/api/review/${onboardingId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, notes }),
+    headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+    body: JSON.stringify({ action, notes, stepId }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export function streamStatus(id: string, onEvent: (data: unknown) => void): () => void {
-  const sseBase = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}:4001` : API_URL;
-  const es = new EventSource(`${sseBase}/api/status/${id}/stream`);
+  const es = new EventSource(`${API_URL}/api/status/${id}/stream`);
   es.onmessage = (e) => onEvent(JSON.parse(e.data));
   es.onerror = () => es.close();
   return () => es.close();

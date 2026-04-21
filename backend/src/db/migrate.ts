@@ -51,5 +51,14 @@ export async function migrate() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
-  console.log("[db] migrations applied");
+  // Indexes for query performance
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_onboarding_steps_onboarding_id ON onboarding_steps(onboarding_id);
+    CREATE INDEX IF NOT EXISTS idx_onboarding_steps_agent_name ON onboarding_steps(agent_name);
+    CREATE INDEX IF NOT EXISTS idx_review_queue_onboarding_id ON review_queue(onboarding_id);
+    CREATE INDEX IF NOT EXISTS idx_review_queue_pending ON review_queue(onboarding_id) WHERE reviewer_action IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_onboardings_status ON onboardings(status);
+    CREATE INDEX IF NOT EXISTS idx_onboardings_state ON onboardings(state);
+  `);
+  console.log("[db] migrations + indexes applied");
 }

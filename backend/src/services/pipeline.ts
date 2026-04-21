@@ -240,11 +240,12 @@ Do NOT explain. JSON only.`,
       }
     }
     if (Object.keys(scores).length === 0) throw new Error("No scores parsed");
-  } catch {
-    // Deterministic fallback with slight variance per specialist
-    const base = [0.87, 0.82, 0.93, 0.95];
+  } catch (parseErr) {
+    // HONEST failure: don't fabricate scores — flag entire run for human review
+    console.error(`[confidence-gate] Failed to parse scores for ${onboardingId}:`, parseErr, "Raw:", gateResult.content);
+    // All specialists get 0.0 = guaranteed human review
     const names = ["DocExtractor", "ComplianceChecker", "FormFiller", "CoachWriter"];
-    names.forEach((n, i) => { scores[n] = base[i] + Math.random() * 0.05; });
+    names.forEach((n) => { scores[n] = 0.0; });
   }
 
   const avgConfidence = Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length;
