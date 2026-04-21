@@ -33,19 +33,29 @@ export async function agentThink(
   agentTitle: string,
   systemPrompt: string,
   userPrompt: string,
-  maxTokens = 500
-): Promise<{ content: string; tokens: number }> {
-  const res = await client.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: "system", content: `You are ${agentName}, a ${agentTitle}. ${systemPrompt}` },
-      { role: "user", content: userPrompt },
-    ],
-    max_tokens: maxTokens,
-    temperature: 0.4,
-  });
-  return {
-    content: res.choices[0]?.message?.content || "",
-    tokens: res.usage?.total_tokens || 0,
-  };
+  maxTokens = 500,
+  options?: { temperature?: number; model?: string }
+): Promise<{ content: string; tokens: number; model: string }> {
+  const temp = options?.temperature ?? 0.4;
+  const modelUsed = options?.model || MODEL;
+  try {
+    const res = await client.chat.completions.create({
+      model: modelUsed,
+      messages: [
+        { role: "system", content: `You are ${agentName}, a ${agentTitle}. ${systemPrompt}` },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: maxTokens,
+      temperature: temp,
+    });
+    return {
+      content: res.choices[0]?.message?.content || "",
+      tokens: res.usage?.total_tokens || 0,
+      model: modelUsed,
+    };
+  } catch (err) {
+    // Circuit breaker: if primary model fails, log and rethrow
+    console.error(`[minimax] ${agentName} failed on ${modelUsed}:`, err);
+    throw err;
+  }
 }

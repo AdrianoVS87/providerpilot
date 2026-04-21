@@ -1,5 +1,6 @@
 import { pool } from "../db/pool.js";
 import { agentThink } from "./minimax.js";
+import { createIssue, updateIssue, addComment } from "./paperclip.js";
 import { v4 as uuid } from "uuid";
 import { EventEmitter } from "events";
 
@@ -13,6 +14,17 @@ const agentIds = JSON.parse(readFileSync(join(__dirname, "../../agent-ids.json")
 
 export const pipelineEvents = new EventEmitter();
 pipelineEvents.setMaxListeners(100);
+
+// Load knowledge base for a state
+function loadKnowledgeBase(state: string): string {
+  try {
+    const kbPath = join(__dirname, `../../knowledge-bases/${state.toLowerCase()}/licensing.md`);
+    const content = readFileSync(kbPath, "utf-8");
+    return content.slice(0, 3000); // cap at 3000 chars to fit context
+  } catch {
+    return "No state-specific knowledge base available. Use general federal childcare licensing guidelines.";
+  }
+}
 
 const VALID_STATES = ["CA", "TX", "FL", "NY", "MI", "NV", "IN", "OH", "GA", "IL"];
 
@@ -86,10 +98,41 @@ export async function runPipeline(data: IntakeData): Promise<string> {
   return onboardingId;
 }
 
+const COMPANY_ID = agentIds.companyId;
+const PROJECT_ID = process.env.PAPERCLIP_PROJECT_ID || "";
+
+async function createPaperclipTask(title: string, description: string, assigneeId: string, parentId?: string): Promise<string | null> {
+  if (!PROJECT_ID) return null;
+  try {
+    const issue = await createIssue(COMPANY_ID, { title, description, projectId: PROJECT_ID, assigneeId, parentId, status: "backlog" });
+    return issue.id;
+  } catch (err) {
+    console.warn("[paperclip] Failed to create issue:", err);
+    return null;
+  }
+}
+
+async function completePaperclipTask(issueId: string | null, agentId: string, summary: string) {
+  if (!issueId) return;
+  try {
+    await updateIssue(COMPANY_ID, issueId, { status: "done" });
+    await addComment(COMPANY_ID, issueId, summary, agentId);
+  } catch (err) {
+    console.warn("[paperclip] Failed to update issue:", err);
+  }
+}
+
 async function runPipelineSteps(onboardingId: string, data: IntakeData) {
   const state = data.state;
   const stateDirectorId = (agentIds.stateDirectors as Record<string, string>)[state] || null;
   let totalTokens = 0;
+
+  // Create parent task in Paperclip
+  const parentTaskId = await createPaperclipTask(
+    `Onboard ${data.providerName} — ${state}`,
+    `Full onboarding pipeline for ${data.providerName} (${data.businessName || "N/A"}) in ${state}. Facility: ${data.facilityType}. Capacity: ${data.maxCapacity}.`,
+    agentIds.executives.CEO
+  );
 
   // Step 1: CEO intake
   const ceoStepId = await addStep(onboardingId, "CEO-Agent", agentIds.executives.CEO, "intake_received", "in_progress", data);
@@ -101,6 +144,7 @@ async function runPipelineSteps(onboardingId: string, data: IntakeData) {
   );
   totalTokens += ceoResult.tokens;
   await updateStep(ceoStepId, "completed", { decision: ceoResult.content, routedTo: `VP-Licensing → Director-${state}` }, undefined, ceoResult.tokens);
+  await completePaperclipTask(parentTaskId, agentIds.executives.CEO, `Intake processed. Routed to VP-Licensing → Director-${state}.`);
 
   // Step 2: VP-Licensing routes
   const vplStepId = await addStep(onboardingId, "VP-Licensing", agentIds.vps["VP-Licensing"], "routing_to_state", "in_progress", { state });
@@ -124,39 +168,58 @@ async function runPipelineSteps(onboardingId: string, data: IntakeData) {
   totalTokens += dirResult.tokens;
   await updateStep(dirStepId, "completed", { dispatch: dirResult.content }, undefined, dirResult.tokens);
 
-  // Step 4: Specialists run in parallel
+  // Step 4: Specialists run in parallel — with state KB injected
   const focalStates = ["CA", "TX", "NY", "MI", "NV"];
-  const stateKey = focalStates.includes(state) ? state : "TX"; // fallback to TX specialists for non-focal states
+  const stateKey = focalStates.includes(state) ? state : "TX";
+  const stateKB = loadKnowledgeBase(state);
+
+  // Create sub-tasks in Paperclip for each specialist
+  const docTaskId = await createPaperclipTask(`DocExtractor — ${data.providerName}`, `Extract documents for ${state}`, (agentIds.specialists as Record<string, string>)[`DocExtractor-${stateKey}`] || agentIds.executives.CEO, parentTaskId || undefined);
+  const compTaskId = await createPaperclipTask(`ComplianceCheck — ${data.providerName}`, `Check ${state} compliance`, (agentIds.specialists as Record<string, string>)[`ComplianceChecker-${stateKey}`] || agentIds.executives.CEO, parentTaskId || undefined);
+  const formTaskId = await createPaperclipTask(`FormFiller — ${data.providerName}`, `Fill ${state} application`, (agentIds.specialists as Record<string, string>)[`FormFiller-${stateKey}`] || agentIds.executives.CEO, parentTaskId || undefined);
+  const coachTaskId = await createPaperclipTask(`CoachWriter — ${data.providerName}`, `Write coaching email for ${state}`, (agentIds.specialists as Record<string, string>)[`CoachWriter-${stateKey}`] || agentIds.executives.CEO, parentTaskId || undefined);
 
   const specialistResults = await Promise.all([
-    runSpecialist(onboardingId, `DocExtractor-${stateKey}`, "DocExtractor", "researcher",
-      `Extract and validate documents for ${data.providerName}. State: ${state}. Check ID validity, certifications, and inspection reports.`,
+    runSpecialist(onboardingId, `DocExtractor-${stateKey}`, "DocExtractor", "document extraction specialist",
+      `Extract and validate required documents for ${data.providerName} in ${state}.\n\nSTATE LICENSING REQUIREMENTS:\n${stateKB}\n\nBased on the above regulations, list the specific documents this provider needs. Check ID validity, certifications, and inspection reports. Flag any missing documents.`,
       (agentIds.specialists as Record<string, string>)[`DocExtractor-${stateKey}`]),
 
     runSpecialist(onboardingId, `ComplianceChecker-${stateKey}`, "ComplianceChecker", "compliance analyst",
-      `Check compliance for ${data.providerName} in ${state}. Facility type: ${data.facilityType}. Capacity: ${data.maxCapacity}. Verify against state regulations.`,
+      `Check compliance for ${data.providerName} in ${state}. Facility type: ${data.facilityType}. Capacity: ${data.maxCapacity}.\n\nSTATE LICENSING REQUIREMENTS:\n${stateKB}\n\nCompare the provider's setup against the above state-specific regulations. List each requirement, whether it's met/unknown/missing, and any compliance gaps.`,
       (agentIds.specialists as Record<string, string>)[`ComplianceChecker-${stateKey}`]),
 
     runSpecialist(onboardingId, `FormFiller-${stateKey}`, "FormFiller", "form automation specialist",
-      `Generate pre-filled licensing application for ${data.providerName} in ${state}. Provider data: ${JSON.stringify(data)}`,
+      `Generate pre-filled licensing application for ${data.providerName} in ${state}.\n\nSTATE LICENSING REQUIREMENTS:\n${stateKB}\n\nProvider data: ${JSON.stringify(data)}\n\nUsing the state-specific application process above, generate the pre-filled form fields. Reference the actual form numbers and required fields from the regulations.`,
       (agentIds.specialists as Record<string, string>)[`FormFiller-${stateKey}`]),
 
     runSpecialist(onboardingId, `CoachWriter-${stateKey}`, "CoachWriter", "onboarding coach",
-      `Write personalized next-step coaching email for ${data.providerName} in ${state}. Include specific ${state} licensing steps.`,
+      `Write personalized next-step coaching email for ${data.providerName} in ${state}.\n\nSTATE LICENSING REQUIREMENTS:\n${stateKB}\n\nUsing the actual application process and costs from the above regulations, write a warm, specific coaching email with numbered next steps. Include real form numbers, training requirements, and estimated costs from the regulations.`,
       (agentIds.specialists as Record<string, string>)[`CoachWriter-${stateKey}`]),
   ]);
 
-  for (const r of specialistResults) {
-    totalTokens += r.tokens;
+  // Complete Paperclip sub-tasks
+  const paperclipTaskIds = [docTaskId, compTaskId, formTaskId, coachTaskId];
+  for (let i = 0; i < specialistResults.length; i++) {
+    totalTokens += specialistResults[i].tokens;
+    await completePaperclipTask(paperclipTaskIds[i], (agentIds.specialists as Record<string, string>)[specialistResults[i].name] || "", specialistResults[i].content.slice(0, 500));
   }
 
-  // Step 5: ConfidenceGate scores outputs
+  // Step 5: ConfidenceGate scores outputs — INDEPENDENT JUDGE
+  // Uses different temperature (0.1 = more deterministic), different system prompt framing,
+  // and explicitly adversarial scoring rubric to reduce correlated failures with specialists
   const gateStepId = await addStep(onboardingId, "ConfidenceGate", agentIds.validators.ConfidenceGate, "scoring_outputs", "in_progress");
   const gateResult = await agentThink(
-    "ConfidenceGate", "Independent Quality Judge",
-    "You are an independent judge. Score each specialist output on a 0-1 scale. Be critical. Any score below 0.9 should be flagged for human review. Return JSON with scores.",
-    `Score these specialist outputs for ${data.providerName} (${state}):\n${specialistResults.map((r) => `${r.name}: ${r.content}`).join("\n\n")}`,
-    300
+    "ConfidenceGate", "Independent Quality Auditor",
+    `You are a SEPARATE, ADVERSARIAL quality auditor. You did NOT produce the outputs below — another system did. Your job is to find flaws. Score STRICTLY on a 0.0-1.0 scale using this rubric:
+- 0.95-1.0: Factually correct, cites specific regulations, actionable, complete
+- 0.85-0.94: Mostly correct but missing specifics or has minor gaps
+- 0.70-0.84: Significant gaps, vague, or partially incorrect
+- Below 0.70: Incorrect, hallucinated, or unusable
+Return ONLY a JSON object like: {"DocExtractor": 0.91, "ComplianceChecker": 0.85, "FormFiller": 0.93, "CoachWriter": 0.88}
+Do NOT explain. JSON only.`,
+    `Audit these specialist outputs for provider "${data.providerName}" in ${state}. The state knowledge base was provided to specialists. Score each:\n\n${specialistResults.map((r) => `### ${r.name}\n${r.content}`).join("\n\n")}`,
+    300,
+    { temperature: 0.1 }  // Low temperature = more deterministic, less correlated with specialists at 0.4
   );
   totalTokens += gateResult.tokens;
 
@@ -233,7 +296,23 @@ async function runSpecialist(
   agentId?: string
 ): Promise<{ name: string; content: string; tokens: number; stepId: string }> {
   const stepId = await addStep(onboardingId, agentName, agentId || null, `${role.toLowerCase()}_analysis`, "in_progress");
-  const result = await agentThink(agentName, title, `You are a specialist ${role} in the ProviderPilot system.`, prompt, 400);
-  await updateStep(stepId, "completed", { analysis: result.content }, undefined, result.tokens);
-  return { name: agentName, content: result.content, tokens: result.tokens, stepId };
+
+  // Retry with exponential backoff (max 2 attempts)
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const result = await agentThink(agentName, title, `You are a specialist ${role} in the ProviderPilot system.`, prompt, 400);
+      await updateStep(stepId, "completed", { analysis: result.content, model: result.model, attempt }, undefined, result.tokens);
+      return { name: agentName, content: result.content, tokens: result.tokens, stepId };
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.warn(`[pipeline] ${agentName} attempt ${attempt + 1} failed:`, lastError.message);
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1))); // backoff
+    }
+  }
+
+  // Failed after retries — mark step as error, return degraded result
+  const fallbackContent = `[DEGRADED] ${agentName} failed after 2 attempts: ${lastError?.message}. Manual review required.`;
+  await updateStep(stepId, "completed", { analysis: fallbackContent, error: true, attempts: 2 }, 0.0, 0);
+  return { name: agentName, content: fallbackContent, tokens: 0, stepId };
 }

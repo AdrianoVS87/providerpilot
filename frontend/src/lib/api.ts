@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://82.25.76.54:4000";
+// Use relative URL to leverage Next.js rewrites (avoids mixed content HTTPS→HTTP)
+const API_URL = typeof window !== "undefined" ? "/backend" : (process.env.NEXT_PUBLIC_API_URL || "http://82.25.76.54:4001");
 
 export async function submitIntake(data: IntakeFormData) {
   const res = await fetch(`${API_URL}/api/intake`, {
@@ -45,7 +46,8 @@ export async function submitReview(onboardingId: string, action: string, notes?:
 }
 
 export function streamStatus(id: string, onEvent: (data: unknown) => void): () => void {
-  const es = new EventSource(`${API_URL}/api/status/${id}/stream`);
+  const sseUrl = typeof window !== "undefined" ? `/backend/api/status/${id}/stream` : `${API_URL}/api/status/${id}/stream`;
+  const es = new EventSource(sseUrl);
   es.onmessage = (e) => onEvent(JSON.parse(e.data));
   es.onerror = () => es.close();
   return () => es.close();
