@@ -24,6 +24,20 @@ app.use("/agents", agentsRouter); // Paperclip heartbeat endpoints
 app.use("/api/review", reviewRouter);
 app.use("/api/metrics", metricsRouter);
 
+// Eval endpoint
+app.post("/api/eval/run", async (_req, res) => {
+  const { runEvalSet } = await import("./services/eval.js");
+  res.json({ message: "Eval set started. This will take ~6 minutes for 10 providers.", startedAt: new Date().toISOString() });
+  runEvalSet().then((results) => {
+    console.log("[eval] Completed:", JSON.stringify(results, null, 2));
+  }).catch(console.error);
+});
+
+app.get("/api/eval/golden-set", async (_req, res) => {
+  const { GOLDEN_SET } = await import("./services/eval.js");
+  res.json(GOLDEN_SET);
+});
+
 // Health check
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "providerpilot-api", timestamp: new Date().toISOString() });
