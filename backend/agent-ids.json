@@ -53,6 +53,6 @@
   "minimax": {
     "baseUrl": "https://api.minimax.io/v1",
     "model": "MiniMax-M2.7",
-    "note": "Free tier - used for idle agent heartbeats"
+    "note": "Free tier - used for idle agent heartbeats and lightweight tasks"
   }
 }
