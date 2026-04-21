@@ -1,0 +1,58 @@
+{
+  "companyId": "afbbf6b1-60ae-437b-a8d0-a743754ef3ae",
+  "executives": {
+    "CEO": "03bdee6d-b825-4df6-aef7-09e9922d743b",
+    "COO": "94434aad-0e41-44b7-b35c-490617e5efd7"
+  },
+  "vps": {
+    "VP-Licensing": "6653e004-b9b6-4d39-81e3-31cb1cb767b7",
+    "VP-Compliance": "73c45313-ab8a-4aa9-bf20-9ea3064614e3",
+    "VP-Communications": "0dfb0d7a-b1a1-45c0-aaae-ed276f454536",
+    "VP-Quality": "83f70a08-27bf-4f72-8a7f-892193edbab7"
+  },
+  "stateDirectors": {
+    "CA": "951b34e3-6c4c-4c14-bcff-ed8e8f3d8e75",
+    "TX": "eeac477b-c1ac-44aa-bb63-27b7c44a09ca",
+    "FL": "3f9a1570-72e4-46dd-b71c-c0e54ea91f5a",
+    "NY": "14f9140f-482a-44dd-9305-fe7b726511f3",
+    "MI": "1150e28b-c70d-428a-a334-c9ca1d3786c3",
+    "NV": "35ecb2ef-3748-4184-aec2-8ff033439038",
+    "IN": "e91e2743-c094-4cf0-aa47-25f3d315823c",
+    "OH": "5a4d065d-b296-4fb8-84c7-9e47c0a62051",
+    "GA": "3965f8cc-3b6d-4e47-b092-f4879787f187",
+    "IL": "8b1e8628-8586-4202-a16b-1b0333d32972"
+  },
+  "specialists": {
+    "DocExtractor-CA": "760e2912-f00a-47a5-ab58-95a68f7bb648",
+    "ComplianceChecker-CA": "9727742d-2c00-4e02-973c-b664d9b343e8",
+    "FormFiller-CA": "efbb95b2-b509-4319-9b42-6f0fbc0cc9a6",
+    "CoachWriter-CA": "d498be56-a195-4dc6-8c61-235a63f6dbf1",
+    "DocExtractor-TX": "1fef156c-ce3f-4750-a104-16e33c989ffe",
+    "ComplianceChecker-TX": "50647867-63d1-4f91-82e8-cc078c29a987",
+    "FormFiller-TX": "a6710870-b6b4-43b9-a678-cf7a691fe7ee",
+    "CoachWriter-TX": "1b969f08-bdc9-4ee7-a8cd-b809c846d813",
+    "DocExtractor-NY": "4742b36d-5298-4a19-a9f5-f9bb8e94b91d",
+    "ComplianceChecker-NY": "0581f16e-f3da-41ad-a23d-fac95140792e",
+    "FormFiller-NY": "667caab3-608b-4616-b8c3-de5a22ac3d3a",
+    "CoachWriter-NY": "5cdf40c6-66c6-44ef-ae14-abee09ab0b95",
+    "DocExtractor-MI": "96f7b0d0-25b2-418f-8cd9-efc808c63a12",
+    "ComplianceChecker-MI": "cf6f12c3-db0c-4aeb-8e6f-28f50928ba2e",
+    "FormFiller-MI": "0b2c6f64-07b4-437a-a0ec-172ddafa829e",
+    "CoachWriter-MI": "26d1f2f8-84ce-47fb-b7f3-33919ec8b057",
+    "DocExtractor-NV": "b346dbdf-a981-4805-a712-ee5efa244c65",
+    "ComplianceChecker-NV": "3252cb71-beb9-4736-98c0-9a07a4e0201b",
+    "FormFiller-NV": "f0d58f4f-dde9-43f9-b683-0329d8377522",
+    "CoachWriter-NV": "fc8d2cf4-be2c-43f5-8016-edebda0ac0c1"
+  },
+  "validators": {
+    "ConfidenceGate": "8d03c3b1-cab9-4c35-ad10-fa0f2deece16",
+    "RegressionTester": "65f27d5b-8cea-4990-af39-87142792359d",
+    "CostMonitor": "29a7f1a9-de89-4c91-96b1-e794901e5718",
+    "SafetyAuditor": "bd42893f-3c25-481b-aaba-a6c557e9b4e7"
+  },
+  "minimax": {
+    "baseUrl": "https://api.minimax.io/v1",
+    "model": "MiniMax-M2.7",
+    "note": "Free tier - used for idle agent heartbeats and lightweight tasks"
+  }
+}
