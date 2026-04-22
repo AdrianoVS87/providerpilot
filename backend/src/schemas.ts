@@ -16,7 +16,8 @@ export const intakeSchema = z.object({
 
 export const reviewSchema = z.object({
   action: z.enum(["approve", "reject", "edit"]),
-  notes: z.string().max(2000).optional(),
+  // Draft edits can include full JSON payloads; keep practical but safe limit
+  notes: z.string().max(20000).optional(),
   stepId: z.string().uuid().optional(),
 });
 
