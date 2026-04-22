@@ -43,7 +43,7 @@ export default function DashboardPage() {
           <>
             {/* Cost disclosure + selector */}
             <div className="mb-6 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <div className="text-amber-300 text-sm font-medium">Cost Mode: {metrics.costMode.toUpperCase()} ({metrics.costAccuracy})</div>
                   <div className="text-amber-100/80 text-xs mt-1">{metrics.costNote}</div>
@@ -199,7 +199,7 @@ export default function DashboardPage() {
                   <CardTitle className="text-white">Onboardings by State</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     {metrics.byState.map((s) => (
                       <div key={s.state} className="bg-slate-800/50 rounded-lg p-3 text-center">
                         <div className="text-lg font-bold text-white">{s.state}</div>

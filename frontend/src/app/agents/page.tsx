@@ -91,7 +91,7 @@ export default function AgentsPage() {
                   <h3 className="text-lg font-semibold text-white">{tier}</h3>
                   <Badge variant="outline" className="border-slate-700 text-slate-400">{tierAgents.length}</Badge>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {tierAgents.map((agent) => (
                     <Card key={agent.id} className="bg-slate-900/40 border-slate-800 hover:border-slate-700 transition">
                       <CardHeader className="pb-2">

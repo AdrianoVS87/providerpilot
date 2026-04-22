@@ -43,7 +43,7 @@ export default function ReviewPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
       <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <a href="/" className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">PP</div>
@@ -98,7 +98,7 @@ export default function ReviewPage() {
                       {typeof item.original_output === "string" ? item.original_output : JSON.stringify(item.original_output, null, 2)}
                     </pre>
                   )}
-                  <div className="flex gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                     <Button size="sm" className="bg-green-600 hover:bg-green-700"
                       disabled={acting === item.id} onClick={() => handleAction(item, "approve")}>
                       ✅ Approve

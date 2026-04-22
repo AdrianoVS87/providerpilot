@@ -177,7 +177,7 @@ export default function StatusPage() {
               <h1 className="text-xl font-bold text-white">ProviderPilot</h1>
             </a>
           </div>
-          <nav className="flex gap-4 text-sm">
+          <nav className="hidden md:flex gap-4 text-sm">
             <a href="/" className="text-slate-400 hover:text-white transition">New Intake</a>
             <a href="/dashboard" className="text-slate-400 hover:text-white transition">Dashboard</a>
             <a href="/agents" className="text-slate-400 hover:text-white transition">Agents</a>
