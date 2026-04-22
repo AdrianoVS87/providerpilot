@@ -154,10 +154,12 @@ export default function ReviewPage() {
                     </div>
                     {view === "pending" ? (
                       <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Pending Review</Badge>
+                    ) : item.reviewer_action === "reject" ? (
+                      <Badge className="bg-red-500/20 text-red-400 border-red-500/30">REJECTED</Badge>
+                    ) : item.reviewer_action === "approve" ? (
+                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">APPROVED</Badge>
                     ) : (
-                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                        {item.reviewer_action?.toUpperCase() || "PROCESSED"}
-                      </Badge>
+                      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">EDITED</Badge>
                     )}
                   </div>
                 </CardHeader>
@@ -195,7 +197,7 @@ export default function ReviewPage() {
                       >
                         Download Filled Application ({Math.max(1, Math.round((item.artifacts[0].bytes || 0) / 1024))} KB)
                       </a>
-                    ) : (
+                    ) : item.agent_name.includes("FormFiller") ? (
                       <button
                         type="button"
                         disabled
@@ -203,6 +205,10 @@ export default function ReviewPage() {
                       >
                         Generating…
                       </button>
+                    ) : (
+                      <span className="inline-flex min-h-[44px] items-center rounded-md border border-slate-700 bg-slate-800/20 px-3 py-2 text-xs text-slate-500">
+                        No filled application artifact for this step
+                      </span>
                     )}
                   </div>
                 </CardContent>
