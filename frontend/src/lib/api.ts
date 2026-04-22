@@ -1,46 +1,56 @@
-// API URL: derive from current hostname (API always on port 4001)
-const API_URL = typeof window !== "undefined"
-  ? `${window.location.protocol}//${window.location.hostname}:4001`
-  : (process.env.BACKEND_URL || "http://localhost:4001");
+// Same-origin API (nginx proxies /api to backend)
+const API_URL = "";
 
 const API_KEY = "pp-demo-key-2026";
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const headers = new Headers(options.headers || {});
+    if (!headers.has("X-API-Key")) headers.set("X-API-Key", API_KEY);
+    return await fetch(url, { ...options, headers, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function submitIntake(data: IntakeFormData) {
-  const res = await fetch(`${API_URL}/api/intake`, {
+  const res = await fetchWithTimeout(`${API_URL}/api/intake`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
     body: JSON.stringify(data),
-  });
+  }, 12000);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<{ onboardingId: string; status: string }>;
 }
 
 export async function getStatus(id: string) {
-  const res = await fetch(`${API_URL}/api/status/${id}`);
+  const res = await fetchWithTimeout(`${API_URL}/api/status/${id}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<OnboardingStatus>;
 }
 
 export async function getAgents() {
-  const res = await fetch(`${API_URL}/api/agents`);
+  const res = await fetchWithTimeout(`${API_URL}/api/agents`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function getMetrics() {
-  const res = await fetch(`${API_URL}/api/metrics`);
+  const res = await fetchWithTimeout(`${API_URL}/api/metrics`);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<Metrics>;
 }
 
 export async function getReviewQueue() {
-  const res = await fetch(`${API_URL}/api/review/queue`);
+  const res = await fetchWithTimeout(`${API_URL}/api/review/queue`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function submitReview(onboardingId: string, action: string, notes?: string, stepId?: string) {
-  const res = await fetch(`${API_URL}/api/review/${onboardingId}`, {
+  const res = await fetchWithTimeout(`${API_URL}/api/review/${onboardingId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
     body: JSON.stringify({ action, notes, stepId }),
@@ -94,6 +104,14 @@ export interface OnboardingStatus {
 }
 
 export interface Metrics {
+  costMode: "estimated" | "billed";
+  costAccuracy: "relative" | "reconciled";
+  costNote: string;
+  costViews: {
+    estimated: { totalUsd: number; avgUsd: number; source: string };
+    billed: { totalUsd: number | null; avgUsd: number | null; source: string; coveragePct: number };
+    deltaPct: number | null;
+  };
   totalOnboardings: number;
   completed: number;
   inProgress: number;

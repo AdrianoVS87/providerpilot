@@ -7,6 +7,7 @@ import { getMetrics, type Metrics } from "@/lib/api";
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [costView, setCostView] = useState<"estimated" | "billed">("estimated");
 
   useEffect(() => {
     getMetrics().then(setMetrics).catch(console.error);
@@ -40,6 +41,43 @@ export default function DashboardPage() {
           <div className="text-slate-400 animate-pulse">Loading metrics...</div>
         ) : (
           <>
+            {/* Cost disclosure + selector */}
+            <div className="mb-6 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-amber-300 text-sm font-medium">Cost Mode: {metrics.costMode.toUpperCase()} ({metrics.costAccuracy})</div>
+                  <div className="text-amber-100/80 text-xs mt-1">{metrics.costNote}</div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCostView("estimated")}
+                    className={`px-3 py-1.5 rounded-md text-xs border transition ${
+                      costView === "estimated"
+                        ? "bg-amber-400/20 border-amber-300/40 text-amber-200"
+                        : "bg-transparent border-amber-500/20 text-amber-100/60"
+                    }`}
+                  >
+                    Estimated
+                  </button>
+                  <button
+                    onClick={() => setCostView("billed")}
+                    className={`px-3 py-1.5 rounded-md text-xs border transition ${
+                      costView === "billed"
+                        ? "bg-amber-400/20 border-amber-300/40 text-amber-200"
+                        : "bg-transparent border-amber-500/20 text-amber-100/60"
+                    }`}
+                  >
+                    Billed
+                  </button>
+                </div>
+              </div>
+              {costView === "billed" && metrics.costViews.billed.totalUsd === null && (
+                <div className="text-amber-200/80 text-xs mt-2">
+                  Billed cost is not reconciled yet (coverage {metrics.costViews.billed.coveragePct}%).
+                </div>
+              )}
+            </div>
+
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
               <Card className="bg-slate-900/50 border-slate-800">
@@ -74,8 +112,12 @@ export default function DashboardPage() {
               </Card>
               <Card className="bg-slate-900/50 border-slate-800">
                 <CardContent className="pt-4 text-center">
-                  <div className="text-3xl font-bold text-green-400">${metrics.avgCostUsd.toFixed(4)}</div>
-                  <div className="text-xs text-slate-500">Avg Cost</div>
+                  <div className="text-3xl font-bold text-green-400">
+                    {costView === "estimated"
+                      ? `$${metrics.costViews.estimated.avgUsd.toFixed(4)}`
+                      : (metrics.costViews.billed.avgUsd !== null ? `$${metrics.costViews.billed.avgUsd.toFixed(4)}` : "—")}
+                  </div>
+                  <div className="text-xs text-slate-500">Avg {costView === "estimated" ? "Estimated" : "Billed"} Cost</div>
                 </CardContent>
               </Card>
             </div>
@@ -92,10 +134,14 @@ export default function DashboardPage() {
               </Card>
               <Card className="bg-slate-900/50 border-slate-800">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-slate-400">Total Cost</CardTitle>
+                  <CardTitle className="text-sm text-slate-400">Total {costView === "estimated" ? "Estimated" : "Billed"} Cost</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-bold text-green-400">${metrics.totalCostUsd.toFixed(4)}</div>
+                  <div className="text-xl font-bold text-green-400">
+                    {costView === "estimated"
+                      ? `$${metrics.costViews.estimated.totalUsd.toFixed(4)}`
+                      : (metrics.costViews.billed.totalUsd !== null ? `$${metrics.costViews.billed.totalUsd.toFixed(4)}` : "—")}
+                  </div>
                 </CardContent>
               </Card>
               <Card className="bg-slate-900/50 border-slate-800">
