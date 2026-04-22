@@ -35,6 +35,8 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [view, setView] = useState<"pending" | "history">("pending");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftText, setDraftText] = useState<Record<string, string>>({});
 
   const loadAll = () => {
     Promise.all([getReviewQueue(), getReviewHistory()])
@@ -48,6 +50,30 @@ export default function ReviewPage() {
 
   useEffect(() => { loadAll(); }, []);
 
+  const startEditDraft = (item: ReviewItem) => {
+    const initial = typeof item.original_output === "string"
+      ? item.original_output
+      : JSON.stringify(item.original_output ?? {}, null, 2);
+    setDraftText((prev) => ({ ...prev, [item.id]: prev[item.id] ?? initial }));
+    setEditingId(item.id);
+  };
+
+  const saveDraft = async (item: ReviewItem) => {
+    setActing(item.id);
+    try {
+      const note = draftText[item.id] || "Edited draft";
+      await submitReview(item.onboarding_id, "edit", note, item.step_id);
+      alert("Draft saved. Item remains in Pending until Approve or Reject.");
+      setEditingId(null);
+      setTimeout(() => loadAll(), 250);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Save draft failed";
+      alert(msg);
+    } finally {
+      setActing(null);
+    }
+  };
+
   const handleAction = async (item: ReviewItem, action: string) => {
     setActing(item.id);
     try {
@@ -60,16 +86,13 @@ export default function ReviewPage() {
         if (!ok) return;
       }
       if (action === "edit") {
-        const ok = confirm("Enable draft edit mode? This keeps the item in Pending and does not approve it.");
-        if (!ok) return;
+        startEditDraft(item);
+        return;
       }
 
-      await submitReview(item.onboarding_id, action, action === "edit" ? "Draft edited in dashboard" : "Reviewed via dashboard", item.step_id);
+      await submitReview(item.onboarding_id, action, "Reviewed via dashboard", item.step_id);
 
-      if (action === "edit") {
-        // Keep item pending; just refresh to show latest notes/state
-        setTimeout(() => loadAll(), 250);
-      } else {
+      {
         // Approve/Reject: remove from pending and add to history
         setPending((prev) => prev.filter((i) => i.id !== item.id));
         setHistory((prev) => [{ ...item, reviewer_action: action, reviewed_at: new Date().toISOString() }, ...prev]);
@@ -187,11 +210,30 @@ export default function ReviewPage() {
                     </pre>
                   )}
 
+                  {view === "pending" && editingId === item.id && (
+                    <div className="mb-3 rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
+                      <div className="text-xs text-blue-300 mb-2">Draft Editor (does not approve)</div>
+                      <textarea
+                        className="w-full min-h-[140px] rounded-md border border-slate-700 bg-slate-900/70 p-2 text-xs text-slate-200"
+                        value={draftText[item.id] || ""}
+                        onChange={(e) => setDraftText((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                      />
+                      <div className="mt-2 flex gap-2">
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 min-h-[44px]" disabled={acting === item.id} onClick={() => saveDraft(item)}>
+                          Save Draft
+                        </Button>
+                        <Button size="sm" variant="outline" className="min-h-[44px] border-slate-700 text-slate-300" onClick={() => setEditingId(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {view === "pending" ? (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-3">
                       <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 min-h-[44px]"
                         disabled={acting === item.id} onClick={() => handleAction(item, "edit")}>
-                        ✏️ Edit Draft
+                        {editingId === item.id ? "✏️ Editing…" : "✏️ Edit Draft"}
                       </Button>
                       <Button size="sm" className="bg-green-600 hover:bg-green-700 min-h-[44px]"
                         disabled={acting === item.id} onClick={() => handleAction(item, "approve")}>

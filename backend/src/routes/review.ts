@@ -57,6 +57,38 @@ router.get("/history", async (_req: Request, res: Response) => {
   })));
 });
 
+// POST /api/review/reopen/:reviewId — move processed item back to pending
+router.post("/reopen/:reviewId", async (req: Request, res: Response) => {
+  const { reviewId } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const row = await client.query(`SELECT * FROM review_queue WHERE id = $1 FOR UPDATE`, [reviewId]);
+    if (row.rows.length === 0) {
+      await client.query("ROLLBACK");
+      res.status(404).json({ error: "Review item not found" });
+      return;
+    }
+
+    await client.query(
+      `UPDATE review_queue
+       SET reviewer_action = NULL, reviewed_at = NULL,
+           reviewer_notes = COALESCE(reviewer_notes, '') || CASE WHEN COALESCE(reviewer_notes,'') = '' THEN '' ELSE ' | ' END || 'reopened:' || NOW()::text
+       WHERE id = $1`,
+      [reviewId]
+    );
+
+    await client.query("COMMIT");
+    res.json({ success: true, reviewId, state: "pending" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    const message = err instanceof Error ? err.message : "Reopen failed";
+    res.status(500).json({ error: message });
+  } finally {
+    client.release();
+  }
+});
+
 // POST /api/review/:onboardingId — transactional review with row locking
 router.post("/:onboardingId", async (req: Request, res: Response) => {
   const { onboardingId } = req.params;

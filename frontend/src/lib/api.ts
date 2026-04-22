@@ -65,6 +65,15 @@ export async function submitReview(onboardingId: string, action: string, notes?:
   return res.json();
 }
 
+export async function reopenReviewItem(reviewId: string) {
+  const res = await fetchWithTimeout(`${API_URL}/api/review/reopen/${reviewId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export function streamStatus(id: string, onEvent: (data: unknown) => void): () => void {
   const es = new EventSource(`${API_URL}/api/status/${id}/stream`);
   es.onmessage = (e) => onEvent(JSON.parse(e.data));
