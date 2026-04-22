@@ -91,7 +91,15 @@ export default function ReviewPage() {
         return;
       }
 
-      await submitReview(item.onboarding_id, action, "Reviewed via dashboard", item.step_id);
+      const currentText = (draftText[item.id] && draftText[item.id].trim().length > 0)
+        ? draftText[item.id]
+        : (item.reviewer_notes && item.reviewer_notes.trim().length > 0
+          ? item.reviewer_notes
+          : (typeof item.original_output === "string"
+            ? item.original_output
+            : JSON.stringify(item.original_output ?? {}, null, 2)));
+
+      await submitReview(item.onboarding_id, action, currentText, item.step_id);
 
       {
         // Approve/Reject: remove from pending and add to history
@@ -226,16 +234,14 @@ export default function ReviewPage() {
                 <CardContent>
                   {item.original_output && (
                     <pre className="text-xs text-slate-400 bg-slate-800/50 rounded p-3 mb-4 overflow-auto max-h-40 whitespace-pre-wrap">
-                      {typeof item.original_output === "string" ? item.original_output : JSON.stringify(item.original_output, null, 2)}
+                      {editingId === item.id
+                        ? (draftText[item.id] || "")
+                        : (item.reviewer_notes && item.reviewer_notes.trim().length > 0 && item.reviewer_notes !== "Reviewed via dashboard"
+                          ? item.reviewer_notes
+                          : (typeof item.original_output === "string" ? item.original_output : JSON.stringify(item.original_output, null, 2)))}
                     </pre>
                   )}
 
-                  {item.reviewer_notes && item.reviewer_notes.trim().length > 0 && (
-                    <div className="mb-4 rounded-md border border-blue-500/20 bg-blue-500/5 p-3">
-                      <div className="text-[11px] text-blue-300 mb-1">Saved Draft Notes</div>
-                      <pre className="text-xs text-blue-100/90 whitespace-pre-wrap">{item.reviewer_notes}</pre>
-                    </div>
-                  )}
 
                   {view === "pending" && editingId === item.id && (
                     <div className="mb-3 rounded-md border border-blue-500/30 bg-blue-500/5 p-3">
