@@ -19,6 +19,7 @@ interface ReviewItem {
   step_id: string;
   agent_name: string;
   reason: string;
+  confidence_score: number | null;
   original_output: Record<string, unknown> | string | null;
   reviewer_action: string | null;
   reviewer_notes?: string | null;
@@ -217,7 +218,7 @@ export default function ReviewPage() {
                     <div>
                       <CardTitle className="text-white text-lg">{item.provider_name} — {item.state}</CardTitle>
                       <div className="text-sm text-slate-400 mt-1">
-                        Agent: <span className="text-white">{item.agent_name}</span> · {item.reason}
+                        Agent: <span className="text-white">{item.agent_name}</span> · <span className={`font-mono font-bold ${(item.confidence_score ?? 0) >= 0.9 ? "text-green-400" : (item.confidence_score ?? 0) >= 0.8 ? "text-yellow-400" : "text-red-400"}`}>{(item.confidence_score ?? 0) >= 0.9 ? "✅" : "⚠️"} {(item.confidence_score != null ? (item.confidence_score * 100).toFixed(0) : "—")}%</span>
                       </div>
                     </div>
                     {view === "pending" ? (
