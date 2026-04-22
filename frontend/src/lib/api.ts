@@ -124,4 +124,15 @@ export interface Metrics {
   totalCostUsd: number;
   reviewQueueSize: number;
   byState: Array<{ state: string; count: number; avgConfidence: number | null }>;
+  estimateConfidence: {
+    modelTagCoveragePct: number;
+    billedCoveragePct: number;
+    note: string;
+  };
+  costByModel: Array<{
+    model: string;
+    tokens: number;
+    ratePer1kUsd: number;
+    estimatedUsd: number;
+  }>;
 }

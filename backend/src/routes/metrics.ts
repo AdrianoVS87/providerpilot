@@ -28,6 +28,34 @@ router.get("/", async (_req: Request, res: Response) => {
     `SELECT COUNT(*) FROM review_queue WHERE reviewer_action IS NULL`
   );
 
+  // Estimated cost by model from step outputs (when model metadata is available)
+  const modelRows = await pool.query(`
+    SELECT
+      COALESCE(output->>'model', 'unknown') as model,
+      SUM(tokens_used)::bigint as tokens
+    FROM onboarding_steps
+    GROUP BY COALESCE(output->>'model', 'unknown')
+    ORDER BY SUM(tokens_used) DESC
+  `);
+
+  // Pricing table (USD per 1K tokens) - interview/demo estimation table
+  const PRICING_PER_1K: Record<string, number> = {
+    'MiniMax-M2.7': 0.0000,
+    'anthropic/claude-opus-4-6': 0.0600,
+    'anthropic/claude-sonnet-4-6': 0.0150,
+    'anthropic/claude-haiku-4-5': 0.0015,
+    'openai-codex/gpt-5.3-codex': 0.0200,
+    'unknown': 0.0030,
+  };
+
+  const costByModel = modelRows.rows.map((r) => {
+    const model = String(r.model);
+    const tokens = parseInt(r.tokens || '0', 10);
+    const rate = PRICING_PER_1K[model] ?? PRICING_PER_1K.unknown;
+    const estimatedUsd = parseFloat(((tokens / 1000) * rate).toFixed(4));
+    return { model, tokens, ratePer1kUsd: rate, estimatedUsd };
+  });
+
   const row = totals.rows[0];
   const estimatedTotal = row.sum_cost ? parseFloat(parseFloat(row.sum_cost).toFixed(4)) : 0;
   const estimatedAvg = row.avg_cost ? parseFloat(parseFloat(row.avg_cost).toFixed(4)) : 0;
@@ -72,6 +100,12 @@ router.get("/", async (_req: Request, res: Response) => {
       count: parseInt(r.count),
       avgConfidence: r.avg_confidence ? parseFloat(parseFloat(r.avg_confidence).toFixed(3)) : null,
     })),
+    estimateConfidence: {
+      modelTagCoveragePct: costByModel.length > 0 ? parseFloat((100 - (costByModel.find((m) => m.model === 'unknown')?.tokens || 0) * 100 / ((costByModel.reduce((a,b)=>a+b.tokens,0)) || 1)).toFixed(1)) : 0,
+      billedCoveragePct,
+      note: "Estimated costs are strongest when model tags are present on all steps and billed coverage is >0%."
+    },
+    costByModel,
   });
 });
 

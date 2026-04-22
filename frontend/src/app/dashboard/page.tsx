@@ -154,6 +154,44 @@ export default function DashboardPage() {
               </Card>
             </div>
 
+            {/* Cost by Model */}
+            {metrics.costByModel.length > 0 && (
+              <Card className="bg-slate-900/50 border-slate-800 mb-8">
+                <CardHeader>
+                  <CardTitle className="text-white">Estimated Cost by Model</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-3 text-xs text-slate-400">
+                    Model tag coverage: <span className="text-white">{metrics.estimateConfidence.modelTagCoveragePct}%</span> ·
+                    Billed coverage: <span className="text-white"> {metrics.estimateConfidence.billedCoveragePct}%</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-slate-400 border-b border-slate-800">
+                          <th className="text-left py-2">Model</th>
+                          <th className="text-right py-2">Tokens</th>
+                          <th className="text-right py-2">Rate / 1K</th>
+                          <th className="text-right py-2">Estimated USD</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {metrics.costByModel.map((m) => (
+                          <tr key={m.model} className="border-b border-slate-900 text-slate-300">
+                            <td className="py-2">{m.model}</td>
+                            <td className="py-2 text-right">{m.tokens.toLocaleString()}</td>
+                            <td className="py-2 text-right">${m.ratePer1kUsd.toFixed(4)}</td>
+                            <td className="py-2 text-right text-green-400">${m.estimatedUsd.toFixed(4)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="text-xs text-slate-500 mt-3">{metrics.estimateConfidence.note}</div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* By State */}
             {metrics.byState.length > 0 && (
               <Card className="bg-slate-900/50 border-slate-800">
