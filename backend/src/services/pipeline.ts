@@ -70,10 +70,10 @@ async function updateStep(stepId: string, status: string, output?: unknown, conf
   );
 }
 
-async function addToReviewQueue(onboardingId: string, stepId: string, agentName: string, reason: string, output: unknown) {
+async function addToReviewQueue(onboardingId: string, stepId: string, agentName: string, reason: string, output: unknown, confidence?: number) {
   await pool.query(
-    `INSERT INTO review_queue (onboarding_id, step_id, agent_name, reason, original_output) VALUES ($1, $2, $3, $4, $5)`,
-    [onboardingId, stepId, agentName, reason, JSON.stringify(output)]
+    `INSERT INTO review_queue (onboarding_id, step_id, agent_name, reason, original_output, confidence_score) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [onboardingId, stepId, agentName, reason, JSON.stringify(output), confidence ?? null]
   );
 }
 
@@ -282,7 +282,7 @@ Do NOT explain. JSON only.`,
     if (score < 0.9) {
       const specialist = specialistResults.find((r) => r.name.startsWith(name));
       if (specialist) {
-        await addToReviewQueue(onboardingId, specialist.stepId, name, `Confidence ${(score * 100).toFixed(1)}% below 90% threshold`, specialist.content);
+        await addToReviewQueue(onboardingId, specialist.stepId, name, `Confidence ${(score * 100).toFixed(1)}% below 90% threshold`, specialist.content, score);
         pipelineEvents.emit("step", {
           onboardingId,
           agentName: "ConfidenceGate",
