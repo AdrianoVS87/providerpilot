@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getReviewQueue, getReviewHistory, submitReview, reopenReviewItem } from "@/lib/api";
+import { getReviewQueue, getReviewHistory, submitReview, reopenReviewItem, deleteReviewHistoryItem } from "@/lib/api";
 
 interface ArtifactMeta {
   id: string;
@@ -117,6 +117,25 @@ export default function ReviewPage() {
       setTimeout(() => loadAll(), 300);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Reopen failed";
+      alert(msg);
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const handlePermanentDelete = async (item: ReviewItem) => {
+    setActing(item.id);
+    try {
+      const token = prompt("Type DELETE to permanently remove this history item:");
+      if (token !== "DELETE") {
+        alert("Deletion cancelled. Exact token not provided.");
+        return;
+      }
+      await deleteReviewHistoryItem(item.id);
+      setHistory((prev) => prev.filter((i) => i.id !== item.id));
+      setTimeout(() => loadAll(), 250);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Permanent delete failed";
       alert(msg);
     } finally {
       setActing(null);
@@ -245,7 +264,7 @@ export default function ReviewPage() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="mb-3">
+                    <div className="mb-3 flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -255,6 +274,18 @@ export default function ReviewPage() {
                       >
                         {item.reviewer_action === "approve" ? "↩ Undo Approve" : "↩ Reopen to Pending"}
                       </Button>
+
+                      {item.reviewer_action === "reject" && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="min-h-[44px]"
+                          disabled={acting === item.id}
+                          onClick={() => handlePermanentDelete(item)}
+                        >
+                          🗑 Permanently Remove
+                        </Button>
+                      )}
                     </div>
                   )}
 

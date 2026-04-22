@@ -89,6 +89,38 @@ router.post("/reopen/:reviewId", async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/review/history/:reviewId — permanent removal from history
+router.delete("/history/:reviewId", async (req: Request, res: Response) => {
+  const { reviewId } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const row = await client.query(`SELECT * FROM review_queue WHERE id = $1 FOR UPDATE`, [reviewId]);
+    if (row.rows.length === 0) {
+      await client.query("ROLLBACK");
+      res.status(404).json({ error: "Review item not found" });
+      return;
+    }
+
+    // Only allow deletion of processed items (history)
+    if (!row.rows[0].reviewer_action) {
+      await client.query("ROLLBACK");
+      res.status(400).json({ error: "Only history items can be permanently removed" });
+      return;
+    }
+
+    await client.query(`DELETE FROM review_queue WHERE id = $1`, [reviewId]);
+    await client.query("COMMIT");
+    res.json({ success: true, reviewId, deleted: true });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    const message = err instanceof Error ? err.message : "Delete failed";
+    res.status(500).json({ error: message });
+  } finally {
+    client.release();
+  }
+});
+
 // POST /api/review/:onboardingId — transactional review with row locking
 router.post("/:onboardingId", async (req: Request, res: Response) => {
   const { onboardingId } = req.params;
