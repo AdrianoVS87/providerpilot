@@ -49,6 +49,12 @@ export async function getReviewQueue() {
   return res.json();
 }
 
+export async function getReviewHistory() {
+  const res = await fetchWithTimeout(`${API_URL}/api/review/history`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function submitReview(onboardingId: string, action: string, notes?: string, stepId?: string) {
   const res = await fetchWithTimeout(`${API_URL}/api/review/${onboardingId}`, {
     method: "POST",

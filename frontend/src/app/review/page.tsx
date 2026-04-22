@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getReviewQueue, submitReview } from "@/lib/api";
+import { getReviewQueue, getReviewHistory, submitReview } from "@/lib/api";
 
 interface ArtifactMeta {
   id: string;
@@ -21,6 +21,8 @@ interface ReviewItem {
   reason: string;
   original_output: Record<string, unknown> | string | null;
   reviewer_action: string | null;
+  reviewer_notes?: string | null;
+  reviewed_at?: string | null;
   provider_name: string;
   state: string;
   created_at: string;
@@ -28,24 +30,44 @@ interface ReviewItem {
 }
 
 export default function ReviewPage() {
-  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [pending, setPending] = useState<ReviewItem[]>([]);
+  const [history, setHistory] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+  const [view, setView] = useState<"pending" | "history">("pending");
 
-  const loadQueue = () => {
-    getReviewQueue().then((data) => { setItems(data); setLoading(false); }).catch(() => setLoading(false));
+  const loadAll = () => {
+    Promise.all([getReviewQueue(), getReviewHistory()])
+      .then(([q, h]) => {
+        setPending(q);
+        setHistory(h);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   };
 
-  useEffect(() => { loadQueue(); }, []);
+  useEffect(() => { loadAll(); }, []);
 
   const handleAction = async (item: ReviewItem, action: string) => {
     setActing(item.id);
     try {
+      if (action === "reject") {
+        const ok = confirm("Are you sure you want to reject this item? It will move to Review History.");
+        if (!ok) return;
+      }
+      if (action === "approve") {
+        const ok = confirm("Approve this item and remove it from Pending?");
+        if (!ok) return;
+      }
+
       await submitReview(item.onboarding_id, action, `Reviewed via dashboard`, item.step_id);
-      // Optimistic UX: remove actioned item immediately so user sees change
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
-      // Background refresh to stay consistent with server state
-      setTimeout(() => loadQueue(), 300);
+
+      // Optimistic update: remove from pending and add to top of history
+      setPending((prev) => prev.filter((i) => i.id !== item.id));
+      setHistory((prev) => [{ ...item, reviewer_action: action, reviewed_at: new Date().toISOString() }, ...prev]);
+
+      // Re-sync with backend shortly after
+      setTimeout(() => loadAll(), 400);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Review action failed";
       alert(`Failed to ${action}: ${msg}`);
@@ -53,6 +75,8 @@ export default function ReviewPage() {
       setActing(null);
     }
   };
+
+  const items = view === "pending" ? pending : history;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
@@ -65,7 +89,7 @@ export default function ReviewPage() {
             </a>
             <Badge variant="secondary" className="text-xs">Human Review</Badge>
           </div>
-          <nav className="flex gap-4 text-sm">
+          <nav className="hidden md:flex gap-4 text-sm">
             <a href="/" className="text-slate-400 hover:text-white transition">Intake</a>
             <a href="/dashboard" className="text-slate-400 hover:text-white transition">Dashboard</a>
             <a href="/agents" className="text-slate-400 hover:text-white transition">Agents</a>
@@ -74,21 +98,39 @@ export default function ReviewPage() {
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-white mb-2">Human Review Queue</h2>
-          <p className="text-slate-400">
-            Items flagged by the ConfidenceGate (score &lt; 0.9). Review, approve, or reject specialist outputs.
-          </p>
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold text-white mb-2">Human Review</h2>
+          <p className="text-slate-400">Pending items are actionable. Processed items are kept in history for audit.</p>
+        </div>
+
+        {/* View selector */}
+        <div className="mb-6 flex gap-2">
+          <button
+            onClick={() => setView("pending")}
+            className={`px-3 py-2 rounded-md text-sm border ${view === "pending" ? "bg-blue-500/20 border-blue-400/50 text-blue-200" : "bg-slate-900/50 border-slate-700 text-slate-400"}`}
+          >
+            Pending ({pending.length})
+          </button>
+          <button
+            onClick={() => setView("history")}
+            className={`px-3 py-2 rounded-md text-sm border ${view === "history" ? "bg-blue-500/20 border-blue-400/50 text-blue-200" : "bg-slate-900/50 border-slate-700 text-slate-400"}`}
+          >
+            Review History ({history.length})
+          </button>
         </div>
 
         {loading ? (
-          <div className="text-slate-400 animate-pulse">Loading review queue...</div>
+          <div className="text-slate-400 animate-pulse">Loading review data...</div>
         ) : items.length === 0 ? (
           <Card className="bg-slate-900/50 border-slate-800">
             <CardContent className="py-12 text-center">
               <div className="text-4xl mb-4">✅</div>
-              <div className="text-lg text-white font-medium">Queue Empty</div>
-              <div className="text-sm text-slate-400">All specialist outputs passed the confidence threshold.</div>
+              <div className="text-lg text-white font-medium">{view === "pending" ? "Pending Queue Empty" : "No Review History Yet"}</div>
+              <div className="text-sm text-slate-400">
+                {view === "pending"
+                  ? "All specialist outputs have been actioned."
+                  : "Processed review actions will appear here."}
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -96,14 +138,20 @@ export default function ReviewPage() {
             {items.map((item) => (
               <Card key={item.id} className="bg-slate-900/50 border-slate-800">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
                       <CardTitle className="text-white text-lg">{item.provider_name} — {item.state}</CardTitle>
                       <div className="text-sm text-slate-400 mt-1">
                         Agent: <span className="text-white">{item.agent_name}</span> · {item.reason}
                       </div>
                     </div>
-                    <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Pending Review</Badge>
+                    {view === "pending" ? (
+                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Pending Review</Badge>
+                    ) : (
+                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                        {item.reviewer_action?.toUpperCase() || "PROCESSED"}
+                      </Badge>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -112,22 +160,25 @@ export default function ReviewPage() {
                       {typeof item.original_output === "string" ? item.original_output : JSON.stringify(item.original_output, null, 2)}
                     </pre>
                   )}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700 min-h-[44px]"
-                      disabled={acting === item.id} onClick={() => handleAction(item, "approve")}>
-                      ✅ Approve
-                    </Button>
-                    <Button size="sm" variant="destructive" className="min-h-[44px]"
-                      disabled={acting === item.id} onClick={() => handleAction(item, "reject")}>
-                      ❌ Reject
-                    </Button>
-                    <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 min-h-[44px]"
-                      disabled={acting === item.id} onClick={() => handleAction(item, "edit")}>
-                      ✏️ Edit & Approve
-                    </Button>
-                  </div>
 
-                  <div className="mt-3">
+                  {view === "pending" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-3">
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700 min-h-[44px]"
+                        disabled={acting === item.id} onClick={() => handleAction(item, "approve")}>
+                        ✅ Approve
+                      </Button>
+                      <Button size="sm" variant="destructive" className="min-h-[44px]"
+                        disabled={acting === item.id} onClick={() => handleAction(item, "reject")}>
+                        ❌ Reject
+                      </Button>
+                      <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 min-h-[44px]"
+                        disabled={acting === item.id} onClick={() => handleAction(item, "edit")}>
+                        ✏️ Edit & Approve
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="mt-1">
                     {item.artifacts?.[0] ? (
                       <a
                         href={item.artifacts[0].artifact_url}

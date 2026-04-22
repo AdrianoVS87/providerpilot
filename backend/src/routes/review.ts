@@ -31,6 +31,32 @@ router.get("/queue", async (_req: Request, res: Response) => {
   })));
 });
 
+// GET /api/review/history
+router.get("/history", async (_req: Request, res: Response) => {
+  const result = await pool.query(
+    `SELECT rq.*, o.provider_name, o.state, o.status as onboarding_status
+     FROM review_queue rq
+     JOIN onboardings o ON rq.onboarding_id = o.id
+     WHERE rq.reviewer_action IS NOT NULL
+     ORDER BY rq.reviewed_at DESC NULLS LAST, rq.created_at DESC
+     LIMIT 300`
+  );
+
+  const stepIds = result.rows.map((r) => r.step_id).filter(Boolean);
+  const artifacts = await getLatestArtifactsForSteps(stepIds);
+  const artifactsByStep = new Map<string, any[]>();
+  for (const a of artifacts) {
+    const arr = artifactsByStep.get(a.step_id) || [];
+    arr.push(a);
+    artifactsByStep.set(a.step_id, arr);
+  }
+
+  res.json(result.rows.map((r) => ({
+    ...r,
+    artifacts: artifactsByStep.get(r.step_id) || [],
+  })));
+});
+
 // POST /api/review/:onboardingId — transactional review with row locking
 router.post("/:onboardingId", async (req: Request, res: Response) => {
   const { onboardingId } = req.params;
