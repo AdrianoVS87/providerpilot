@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProviderPilot — Agent Orchestration Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .agent-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .glow { box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+  </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen">
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-xl">P</div>
+        <div>
+          <h1 class="font-bold text-lg">ProviderPilot</h1>
+          <p class="text-xs text-slate-400">Agent Orchestration Dashboard</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-sm text-slate-400">40 Agents Active</span>
+        <div class="w-3 h-3 bg-green-500 rounded-full pulse"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <!-- Agent Hierarchy Tree -->
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+        <span class="text-2xl">🌳</span> Agent Hierarchy
+      </h2>
+      
+      <!-- CEO Level -->
+      <div class="flex justify-center mb-4">
+        <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3 rounded-xl glow border border-purple-400/30">
+          <div class="text-center">
+            <div class="text-2xl mb-1">👑</div>
+            <div class="font-bold">CEO</div>
+            <div class="text-xs text-purple-200">Orchestrator</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex justify-center mb-4">
+        <div class="h-8 w-px bg-slate-700"></div>
+      </div>
+      
+      <!-- VP Level -->
+      <div class="flex justify-center gap-8 mb-4">
+        <div class="bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-2 rounded-lg border border-blue-400/30">
+          <div class="text-center">
+            <div class="text-lg mb-1">⚖️</div>
+            <div class="font-semibold">VP Licensing</div>
+          </div>
+        </div>
+        <div class="bg-gradient-to-r from-amber-600 to-orange-600 px-5 py-2 rounded-lg border border-amber-400/30">
+          <div class="text-center">
+            <div class="text-lg mb-1">💰</div>
+            <div class="font-semibold">VP Cost</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex justify-center mb-4">
+        <div class="h-8 w-px bg-slate-700"></div>
+      </div>
+      
+      <!-- State Directors -->
+      <div class="flex flex-wrap justify-center gap-4 mb-4">
+        <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-600 text-center">
+          <span class="text-green-400 font-bold">TX</span> Director
+        </div>
+        <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-600 text-center">
+          <span class="text-blue-400 font-bold">CA</span> Director
+        </div>
+        <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-600 text-center">
+          <span class="text-yellow-400 font-bold">NY</span> Director
+        </div>
+        <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-600 text-center">
+          <span class="text-red-400 font-bold">FL</span> Director
+        </div>
+        <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-600 text-center text-sm text-slate-500">
+          +6 more
+        </div>
+      </div>
+    </section>
+
+    <!-- Agent Configuration Panel -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Agent List -->
+      <div class="lg:col-span-1 bg-slate-900 rounded-xl border border-slate-800 p-4">
+        <h3 class="font-semibold mb-4 flex items-center gap-2">
+          <span>📋</span> Configure Agents
+        </h3>
+        <div class="space-y-2">
+          <div class="p-3 bg-blue-600/20 border border-blue-500/30 rounded-lg cursor-pointer hover:bg-blue-600/30 transition">
+            <div class="flex items-center justify-between">
+              <span class="font-medium">DocExtractor</span>
+              <span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Active</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-1">Extracts documents from intake</div>
+          </div>
+          <div class="p-3 bg-slate-800/50 border border-slate-700 rounded-lg cursor-pointer hover:bg-slate-800 transition">
+            <div class="flex items-center justify-between">
+              <span class="font-medium">ComplianceChecker</span>
+              <span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Active</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-1">Validates state regulations</div>
+          </div>
+          <div class="p-3 bg-slate-800/50 border border-slate-700 rounded-lg cursor-pointer hover:bg-slate-800 transition">
+            <div class="flex items-center justify-between">
+              <span class="font-medium">CoachWriter</span>
+              <span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Active</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-1">Generates coaching content</div>
+          </div>
+          <div class="p-3 bg-slate-800/50 border border-slate-700 rounded-lg cursor-pointer hover:bg-slate-800 transition">
+            <div class="flex items-center justify-between">
+              <span class="font-medium">FormFiller</span>
+              <span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Active</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-1">Fills PDF applications</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Config Panel -->
+      <div class="lg:col-span-2 bg-slate-900 rounded-xl border border-slate-800 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="font-semibold flex items-center gap-2">
+            <span>⚙️</span> DocExtractor Configuration
+          </h3>
+          <span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Paperclip Agent</span>
+        </div>
+        
+        <!-- Model Config -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Model</label>
+            <select class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+              <option>MiniMax M2.7</option>
+              <option>Claude Sonnet 4.6</option>
+              <option>GPT-4o</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Temperature</label>
+            <input type="range" min="0" max="1" step="0.1" value="0.4" class="w-full">
+            <div class="text-xs text-slate-500 text-right">0.4</div>
+          </div>
+        </div>
+
+        <!-- System Prompt -->
+        <div class="mb-6">
+          <label class="text-xs text-slate-400 block mb-1">System Prompt</label>
+          <textarea class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm h-32 font-mono" spellcheck="false">You are DocExtractor, a document parsing specialist. Extract structured information from childcare licensing documents. Focus on: provider name, facility address, license type, capacity, and compliance status.</textarea>
+        </div>
+
+        <!-- Knowledge Base -->
+        <div class="mb-6">
+          <label class="text-xs text-slate-400 block mb-1">Knowledge Base</label>
+          <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+            <div class="flex items-center justify-between">
+              <span class="text-sm">CA Licensing Forms (LIC 200 Series)</span>
+              <span class="text-xs text-green-400">✓ Loaded</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1">3,247 tokens</div>
+          </div>
+        </div>
+
+        <!-- Live Logs Preview -->
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Live Execution Log</label>
+          <div class="bg-black rounded-lg p-3 font-mono text-xs h-40 overflow-auto">
+            <div class="text-green-400">[12:18:32] Starting DocExtractor for onboarding abc-123</div>
+            <div class="text-slate-400">[12:18:33] Loading knowledge base: CA_LIC_200.json</div>
+            <div class="text-slate-400">[12:18:34] Processing 3 documents...</div>
+            <div class="text-yellow-400">[12:18:36] Extracted: provider_name="Maria Rodriguez"</div>
+            <div class="text-yellow-400">[12:18:36] Extracted: facility_type="home-based"</div>
+            <div class="text-green-400">[12:18:38] ✅ Completed - tokens: 1,247 | cost: $0.001</div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3 mt-6">
+          <button class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium">Save Changes</button>
+          <button class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm">Test Agent</button>
+          <button class="border border-red-500/50 text-red-400 hover:bg-red-500/10 px-4 py-2 rounded-lg text-sm">Disable</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pipeline Visualization -->
+    <section class="mt-12">
+      <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+        <span class="text-2xl">🔄</span> Live Pipeline Execution
+      </h2>
+      
+      <div class="bg-slate-900 rounded-xl border border-slate-800 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="font-medium">Onboarding: Sarah Johnson (NY)</span>
+            <span class="text-xs text-slate-500 ml-2">#on-847392</span>
+          </div>
+          <span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">In Progress</span>
+        </div>
+        
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="bg-green-500/20 text-green-400 px-3 py-1.5 rounded-full text-sm border border-green-500/30">
+            ✅ CEO
+          </div>
+          <span class="text-slate-600">→</span>
+          <div class="bg-green-500/20 text-green-400 px-3 py-1.5 rounded-full text-sm border border-green-500/30">
+            ✅ VP Licensing
+          </div>
+          <span class="text-slate-600">→</span>
+          <div class="bg-green-500/20 text-green-400 px-3 py-1.5 rounded-full text-sm border border-green-500/30">
+            ✅ NY Director
+          </div>
+          <span class="text-slate-600">→</span>
+          <div class="flex gap-2">
+            <div class="bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-full text-sm border border-blue-500/30 animate-pulse">
+              🔄 DocExtractor
+            </div>
+            <div class="bg-amber-500/20 text-amber-400 px-3 py-1.5 rounded-full text-sm border border-amber-500/30">
+              ⏳ Compliance
+            </div>
+            <div class="bg-slate-700 text-slate-400 px-3 py-1.5 rounded-full text-sm border border-slate-600">
+              ⏸️ CoachWriter
+            </div>
+            <div class="bg-slate-700 text-slate-400 px-3 py-1.5 rounded-full text-sm border border-slate-600">
+              ⏸️ FormFiller
+            </div>
+          </div>
+          <span class="text-slate-600">→</span>
+          <div class="bg-slate-700 text-slate-400 px-3 py-1.5 rounded-full text-sm border border-slate-600">
+            🔒 ConfidenceGate
+          </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-sm">
+          <div class="text-slate-400">
+            Tokens used: <span class="text-white">4,892</span> | 
+            Est. cost: <span class="text-green-400">$0.004</span>
+          </div>
+          <div class="text-slate-500">
+            Confidence: <span class="text-yellow-400">87%</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-800 mt-12 py-6">
+    <div class="max-w-7xl mx-auto px-6 text-center text-sm text-slate-500">
+      ProviderPilot — Powered by Paperclip Orchestration • Multi-Model Cascade • Confidence-Gated Human Review
+    </div>
+  </footer>
+</body>
+</html>
