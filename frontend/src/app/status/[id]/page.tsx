@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getStatus, streamStatus, type OnboardingStatus, type OnboardingStep } from "@/lib/api";
+import { getStatus, streamStatus, type OnboardingStatus, type OnboardingStep, type ArtifactMeta } from "@/lib/api";
 
 function statusColor(status: string) {
   switch (status) {
@@ -49,6 +49,8 @@ function agentPhase(agent: string): string {
 function StepCard({ step }: { step: OnboardingStep }) {
   const [expanded, setExpanded] = useState(false);
   const phase = agentPhase(step.agent);
+  const isFormFiller = step.agent.includes("FormFiller");
+  const artifact = step.artifacts?.[0] as ArtifactMeta | undefined;
 
   return (
     <div className="flex gap-4">
@@ -103,6 +105,30 @@ function StepCard({ step }: { step: OnboardingStep }) {
         {step.startedAt && step.completedAt && (
           <div className="text-[10px] text-slate-600 mt-1">
             Duration: {((new Date(step.completedAt).getTime() - new Date(step.startedAt).getTime()) / 1000).toFixed(1)}s
+          </div>
+        )}
+
+        {/* Artifact download (FormFiller only) */}
+        {isFormFiller && (
+          <div className="mt-3">
+            {artifact ? (
+              <a
+                href={artifact.artifact_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-[44px] items-center rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-300 hover:bg-blue-500/20"
+              >
+                Download Filled Application ({Math.max(1, Math.round((artifact.bytes || 0) / 1024))} KB)
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="inline-flex min-h-[44px] items-center rounded-md border border-slate-700 bg-slate-800/40 px-3 py-2 text-xs text-slate-400"
+              >
+                Generating…
+              </button>
+            )}
           </div>
         )}
 

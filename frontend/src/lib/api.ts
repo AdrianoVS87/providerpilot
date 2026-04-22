@@ -79,6 +79,18 @@ export interface IntakeFormData {
   maxCapacity?: number;
 }
 
+export interface ArtifactMeta {
+  id: string;
+  step_id: string;
+  onboarding_id: string;
+  artifact_type: string;
+  artifact_url: string;
+  sha256: string;
+  bytes: number;
+  created_at: string;
+  metadata?: { state?: string; template_version?: string };
+}
+
 export interface OnboardingStep {
   id: string;
   agent: string;
@@ -87,6 +99,7 @@ export interface OnboardingStep {
   confidence: number | null;
   tokens: number;
   output: Record<string, unknown>;
+  artifacts?: ArtifactMeta[];
   startedAt: string;
   completedAt: string | null;
 }

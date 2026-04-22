@@ -13,6 +13,7 @@ import statusRouter from "./routes/status.js";
 import agentsRouter from "./routes/agents.js";
 import reviewRouter from "./routes/review.js";
 import metricsRouter from "./routes/metrics.js";
+import artifactsRouter from "./routes/artifacts.js";
 
 // Validate env on boot — fail fast
 const env = validateEnv();
@@ -39,6 +40,7 @@ app.use("/api/agents", agentsRouter);
 app.use("/agents", agentsRouter);
 app.use("/api/review", reviewRouter);
 app.use("/api/metrics", metricsRouter);
+app.use("/api/artifacts", artifactsRouter);
 
 // Eval
 app.post("/api/eval/run", async (_req, res) => {

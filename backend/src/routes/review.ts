@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { pool } from "../db/pool.js";
 import { reviewSchema } from "../schemas.js";
+import { getLatestArtifactsForSteps } from "./artifacts.js";
 
 const router = Router();
 
@@ -14,7 +15,20 @@ router.get("/queue", async (_req: Request, res: Response) => {
      ORDER BY rq.created_at DESC
      LIMIT 100`
   );
-  res.json(result.rows);
+
+  const stepIds = result.rows.map((r) => r.step_id).filter(Boolean);
+  const artifacts = await getLatestArtifactsForSteps(stepIds);
+  const artifactsByStep = new Map<string, any[]>();
+  for (const a of artifacts) {
+    const arr = artifactsByStep.get(a.step_id) || [];
+    arr.push(a);
+    artifactsByStep.set(a.step_id, arr);
+  }
+
+  res.json(result.rows.map((r) => ({
+    ...r,
+    artifacts: artifactsByStep.get(r.step_id) || [],
+  })));
 });
 
 // POST /api/review/:onboardingId — transactional review with row locking

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { pool } from "../db/pool.js";
 import { pipelineEvents } from "../services/pipeline.js";
+import { getLatestArtifactsForOnboarding } from "./artifacts.js";
 
 const router = Router();
 
@@ -19,6 +20,14 @@ router.get("/:id", async (req: Request, res: Response) => {
   );
 
   const onboarding = ob.rows[0];
+  const artifacts = await getLatestArtifactsForOnboarding(id);
+  const artifactByStep = new Map<string, any[]>();
+  for (const a of artifacts) {
+    const arr = artifactByStep.get(a.step_id) || [];
+    arr.push(a);
+    artifactByStep.set(a.step_id, arr);
+  }
+
   res.json({
     onboardingId: onboarding.id,
     status: onboarding.status,
@@ -37,6 +46,7 @@ router.get("/:id", async (req: Request, res: Response) => {
       confidence: s.confidence ? parseFloat(s.confidence) : null,
       tokens: s.tokens_used,
       output: s.output,
+      artifacts: artifactByStep.get(s.id) || [],
       startedAt: s.started_at,
       completedAt: s.completed_at,
     })),

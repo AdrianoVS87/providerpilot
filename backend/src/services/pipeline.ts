@@ -1,6 +1,7 @@
 import { pool } from "../db/pool.js";
 import { agentThink } from "./minimax.js";
 import { createIssue, updateIssue, addComment } from "./paperclip.js";
+import { generateFilledApplicationArtifact } from "./artifacts.js";
 import { v4 as uuid } from "uuid";
 import { EventEmitter } from "events";
 
@@ -202,6 +203,31 @@ async function runPipelineSteps(onboardingId: string, data: IntakeData) {
   for (let i = 0; i < specialistResults.length; i++) {
     totalTokens += specialistResults[i].tokens;
     await completePaperclipTask(paperclipTaskIds[i], (agentIds.specialists as Record<string, string>)[specialistResults[i].name] || "", specialistResults[i].content.slice(0, 500));
+  }
+
+  // Generate real filled application PDF artifact after FormFiller (non-blocking)
+  const formFillerResult = specialistResults.find((r) => r.name.startsWith("FormFiller"));
+  if (formFillerResult) {
+    const artifact = await generateFilledApplicationArtifact({
+      stepId: formFillerResult.stepId,
+      onboardingId,
+      state,
+      formFillerOutput: {
+        analysis: formFillerResult.content,
+        model: "MiniMax-M2.7",
+        attempt: 0,
+      },
+    });
+
+    if (!artifact) {
+      // warning only: artifact failure must not fail onboarding
+      pipelineEvents.emit("step", {
+        onboardingId,
+        agentName: formFillerResult.name,
+        action: "artifact_generation_warning",
+        status: "warning",
+      });
+    }
   }
 
   // Step 5: ConfidenceGate scores outputs — INDEPENDENT JUDGE

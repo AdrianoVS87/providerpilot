@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getReviewQueue, submitReview } from "@/lib/api";
 
+interface ArtifactMeta {
+  id: string;
+  artifact_url: string;
+  bytes: number;
+  artifact_type: string;
+}
+
 interface ReviewItem {
   id: string;
   onboarding_id: string;
@@ -17,6 +24,7 @@ interface ReviewItem {
   provider_name: string;
   state: string;
   created_at: string;
+  artifacts?: ArtifactMeta[];
 }
 
 export default function ReviewPage() {
@@ -99,18 +107,39 @@ export default function ReviewPage() {
                     </pre>
                   )}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700"
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 min-h-[44px]"
                       disabled={acting === item.id} onClick={() => handleAction(item, "approve")}>
                       ✅ Approve
                     </Button>
-                    <Button size="sm" variant="destructive"
+                    <Button size="sm" variant="destructive" className="min-h-[44px]"
                       disabled={acting === item.id} onClick={() => handleAction(item, "reject")}>
                       ❌ Reject
                     </Button>
-                    <Button size="sm" variant="outline" className="border-slate-700 text-slate-400"
+                    <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 min-h-[44px]"
                       disabled={acting === item.id} onClick={() => handleAction(item, "edit")}>
                       ✏️ Edit & Approve
                     </Button>
+                  </div>
+
+                  <div className="mt-3">
+                    {item.artifacts?.[0] ? (
+                      <a
+                        href={item.artifacts[0].artifact_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex min-h-[44px] items-center rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-300 hover:bg-blue-500/20"
+                      >
+                        Download Filled Application ({Math.max(1, Math.round((item.artifacts[0].bytes || 0) / 1024))} KB)
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="inline-flex min-h-[44px] items-center rounded-md border border-slate-700 bg-slate-800/40 px-3 py-2 text-xs text-slate-400"
+                      >
+                        Generating…
+                      </button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
