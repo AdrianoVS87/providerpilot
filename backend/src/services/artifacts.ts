@@ -45,71 +45,130 @@ function hashFile(filePath: string): Promise<string> {
   });
 }
 
+function drawTopBanner(doc: PDFKit.PDFDocument, title: string, subtitle: string) {
+  const x = doc.page.margins.left;
+  const y = doc.y;
+  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  doc.save();
+  doc.roundedRect(x, y, w, 72, 8).fill("#0f172a");
+  doc.fillColor("#dbeafe").fontSize(10).text("ProviderPilot • Filled Licensing Application", x + 14, y + 12);
+  doc.fillColor("#ffffff").fontSize(18).text(title, x + 14, y + 28);
+  doc.fillColor("#94a3b8").fontSize(10).text(subtitle, x + 14, y + 52);
+  doc.restore();
+  doc.y = y + 86;
+}
+
+function drawSectionHeader(doc: PDFKit.PDFDocument, label: string) {
+  const x = doc.page.margins.left;
+  const y = doc.y;
+  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  doc.save();
+  doc.roundedRect(x, y, w, 24, 5).fill("#e2e8f0");
+  doc.fillColor("#0f172a").fontSize(11).text(label, x + 10, y + 7);
+  doc.restore();
+  doc.y = y + 30;
+}
+
+function drawKeyValues(doc: PDFKit.PDFDocument, rows: Array<[string, string]>) {
+  const x = doc.page.margins.left;
+  let y = doc.y;
+  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const rowH = 20;
+  for (const [k, v] of rows) {
+    doc.save();
+    doc.rect(x, y, w, rowH).strokeColor("#e5e7eb").lineWidth(1).stroke();
+    doc.fillColor("#334155").fontSize(10).text(k, x + 8, y + 6, { width: 180 });
+    doc.fillColor("#111827").fontSize(10).text(v || "N/A", x + 190, y + 6, { width: w - 198 });
+    doc.restore();
+    y += rowH;
+  }
+  doc.y = y + 8;
+}
+
 function writeFooter(doc: PDFKit.PDFDocument, onboardingId: string) {
-  doc.moveDown(2);
-  doc.fontSize(9).fillColor("#666").text(`ProviderPilot • Demo Artifact • Onboarding ${onboardingId}`);
-  doc.text(`Generated at ${new Date().toISOString()}`);
+  const y = doc.page.height - 46;
+  doc.save();
+  doc.moveTo(doc.page.margins.left, y - 6)
+    .lineTo(doc.page.width - doc.page.margins.right, y - 6)
+    .strokeColor("#e5e7eb").lineWidth(1).stroke();
+  doc.fillColor("#64748b").fontSize(9).text(`ProviderPilot • Demo Artifact • Onboarding ${onboardingId}`, doc.page.margins.left, y);
+  doc.text(`Generated at ${new Date().toISOString()}`, doc.page.margins.left, y + 12);
+  doc.restore();
 }
 
 function renderGenericStateApplication(doc: PDFKit.PDFDocument, state: string, onboarding: any, output: FormFillerOutput) {
-  doc.fontSize(18).fillColor("#111").text(`Generic State Application — Demo Placeholder (${state})`);
-  doc.moveDown();
-  doc.fontSize(12).text(`Provider Name: ${onboarding.provider_name}`);
-  doc.text(`Business Name: ${onboarding.business_name || "N/A"}`);
-  doc.text(`Address: ${onboarding.address || "N/A"}`);
-  doc.text(`License Type: ${onboarding.facility_type || "home-based"}`);
-  doc.text(`Application Date: ${new Date().toISOString().slice(0, 10)}`);
-  doc.moveDown();
-  doc.fontSize(11).text("FormFiller Output Summary:");
-  doc.fontSize(10).fillColor("#333").text(output.analysis || "No analysis text available.", { width: 500 });
+  drawTopBanner(doc, `Generic State Application (${state})`, "Demo placeholder template for non-priority states");
+  drawSectionHeader(doc, "Provider Information");
+  drawKeyValues(doc, [
+    ["Provider Name", onboarding.provider_name || "N/A"],
+    ["Business Name", onboarding.business_name || "N/A"],
+    ["Address", onboarding.address || "N/A"],
+    ["License Type", onboarding.facility_type || "home-based"],
+    ["Application Date", new Date().toISOString().slice(0, 10)],
+    ["State", state],
+  ]);
+  drawSectionHeader(doc, "FormFiller Summary");
+  doc.fillColor("#1f2937").fontSize(10).text(output.analysis || "No analysis text available.", { width: 500, lineGap: 2 });
 }
 
 function renderTexasLicense(doc: PDFKit.PDFDocument, onboarding: any, output: FormFillerOutput) {
-  doc.fontSize(18).fillColor("#111").text("Texas Child-Care Licensing Application (Demo)");
-  doc.moveDown();
-  doc.fontSize(12).text("Regulator: Texas HHSC Child Care Regulation");
-  doc.text("Reference Form: 2911 (demo fidelity)");
-  doc.moveDown();
-  doc.text(`Provider Name: ${onboarding.provider_name}`);
-  doc.text(`Address: ${onboarding.address || "N/A"}`);
-  doc.text(`Facility Type: ${onboarding.facility_type || "home-based"}`);
-  doc.text(`State: TX`);
-  doc.text(`Submitted Date: ${new Date().toISOString().slice(0, 10)}`);
-  doc.moveDown();
-  doc.fontSize(11).text("Extracted Compliance Notes:");
-  doc.fontSize(10).fillColor("#333").text(output.analysis || "N/A", { width: 500 });
+  drawTopBanner(doc, "Texas Child-Care Licensing Application", "Regulator: Texas HHSC • Form 2911 (demo fidelity)");
+  drawSectionHeader(doc, "Application Header");
+  drawKeyValues(doc, [
+    ["State", "TX"],
+    ["Program", "Registered Child-Care Home"],
+    ["Regulatory Chapter", "26 TAC Chapter 747"],
+    ["Application Date", new Date().toISOString().slice(0, 10)],
+  ]);
+  drawSectionHeader(doc, "Applicant Details");
+  drawKeyValues(doc, [
+    ["Provider Name", onboarding.provider_name || "N/A"],
+    ["Business Name", onboarding.business_name || "N/A"],
+    ["Address", onboarding.address || "N/A"],
+    ["Facility Type", onboarding.facility_type || "home-based"],
+  ]);
+  drawSectionHeader(doc, "Extracted Compliance Notes");
+  doc.fillColor("#1f2937").fontSize(10).text(output.analysis || "N/A", { width: 500, lineGap: 2 });
 }
 
 function renderCaliforniaLicense(doc: PDFKit.PDFDocument, onboarding: any, output: FormFillerOutput) {
-  doc.fontSize(18).fillColor("#111").text("California Family Child Care Application (Demo)");
-  doc.moveDown();
-  doc.fontSize(12).text("Regulator: CDSS CCLD (Title 22)");
-  doc.text("Application Type: Family Child Care Home");
-  doc.moveDown();
-  doc.text(`Provider Name: ${onboarding.provider_name}`);
-  doc.text(`Address: ${onboarding.address || "N/A"}`);
-  doc.text(`Facility Type: ${onboarding.facility_type || "home-based"}`);
-  doc.text(`State: CA`);
-  doc.text(`Application Date: ${new Date().toISOString().slice(0, 10)}`);
-  doc.moveDown();
-  doc.fontSize(11).text("FormFiller Summary:");
-  doc.fontSize(10).fillColor("#333").text(output.analysis || "N/A", { width: 500 });
+  drawTopBanner(doc, "California Family Child Care Application", "Regulator: CDSS CCLD • Title 22 • LIC 200 series");
+  drawSectionHeader(doc, "Application Header");
+  drawKeyValues(doc, [
+    ["State", "CA"],
+    ["Program", "Family Child Care Home"],
+    ["Regulatory Reference", "Title 22, Division 12"],
+    ["Application Date", new Date().toISOString().slice(0, 10)],
+  ]);
+  drawSectionHeader(doc, "Applicant Details");
+  drawKeyValues(doc, [
+    ["Provider Name", onboarding.provider_name || "N/A"],
+    ["Business Name", onboarding.business_name || "N/A"],
+    ["Address", onboarding.address || "N/A"],
+    ["Facility Type", onboarding.facility_type || "home-based"],
+  ]);
+  drawSectionHeader(doc, "FormFiller Summary");
+  doc.fillColor("#1f2937").fontSize(10).text(output.analysis || "N/A", { width: 500, lineGap: 2 });
 }
 
 function renderNewYorkLicense(doc: PDFKit.PDFDocument, onboarding: any, output: FormFillerOutput) {
-  doc.fontSize(18).fillColor("#111").text("New York Child Care Application (Demo)");
-  doc.moveDown();
-  doc.fontSize(12).text("Regulator: NY OCFS (Title 18 NYCRR)");
-  doc.text("Program Type: Family/Group Family Day Care");
-  doc.moveDown();
-  doc.text(`Provider Name: ${onboarding.provider_name}`);
-  doc.text(`Address: ${onboarding.address || "N/A"}`);
-  doc.text(`Facility Type: ${onboarding.facility_type || "home-based"}`);
-  doc.text(`State: NY`);
-  doc.text(`Application Date: ${new Date().toISOString().slice(0, 10)}`);
-  doc.moveDown();
-  doc.fontSize(11).text("FormFiller Summary:");
-  doc.fontSize(10).fillColor("#333").text(output.analysis || "N/A", { width: 500 });
+  drawTopBanner(doc, "New York Child Care Application", "Regulator: NY OCFS • Title 18 NYCRR");
+  drawSectionHeader(doc, "Application Header");
+  drawKeyValues(doc, [
+    ["State", "NY"],
+    ["Program", "Family/Group Family Day Care"],
+    ["Regulatory Reference", "Title 18 NYCRR"],
+    ["Application Date", new Date().toISOString().slice(0, 10)],
+  ]);
+  drawSectionHeader(doc, "Applicant Details");
+  drawKeyValues(doc, [
+    ["Provider Name", onboarding.provider_name || "N/A"],
+    ["Business Name", onboarding.business_name || "N/A"],
+    ["Address", onboarding.address || "N/A"],
+    ["Facility Type", onboarding.facility_type || "home-based"],
+  ]);
+  drawSectionHeader(doc, "FormFiller Summary");
+  doc.fillColor("#1f2937").fontSize(10).text(output.analysis || "N/A", { width: 500, lineGap: 2 });
 }
 
 function renderByState(doc: PDFKit.PDFDocument, state: string, onboarding: any, output: FormFillerOutput) {

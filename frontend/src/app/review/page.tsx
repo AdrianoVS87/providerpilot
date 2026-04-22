@@ -41,8 +41,14 @@ export default function ReviewPage() {
   const handleAction = async (item: ReviewItem, action: string) => {
     setActing(item.id);
     try {
-      await submitReview(item.onboarding_id, action, `Reviewed via dashboard`);
-      loadQueue();
+      await submitReview(item.onboarding_id, action, `Reviewed via dashboard`, item.step_id);
+      // Optimistic UX: remove actioned item immediately so user sees change
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      // Background refresh to stay consistent with server state
+      setTimeout(() => loadQueue(), 300);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Review action failed";
+      alert(`Failed to ${action}: ${msg}`);
     } finally {
       setActing(null);
     }
