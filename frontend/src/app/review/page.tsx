@@ -236,7 +236,7 @@ export default function ReviewPage() {
                     <pre className="text-xs text-slate-400 bg-slate-800/50 rounded p-3 mb-4 overflow-auto max-h-40 whitespace-pre-wrap">
                       {editingId === item.id
                         ? (draftText[item.id] || "")
-                        : (item.reviewer_notes && item.reviewer_notes.trim().length > 0 && item.reviewer_notes !== "Reviewed via dashboard"
+                        : (item.reviewer_notes && item.reviewer_notes.trim().length > 0 && item.reviewer_notes !== "Reviewed via dashboard" && !item.reviewer_notes.includes("reopened:")
                           ? item.reviewer_notes
                           : (typeof item.original_output === "string" ? item.original_output : JSON.stringify(item.original_output, null, 2)))}
                     </pre>

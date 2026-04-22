@@ -72,8 +72,7 @@ router.post("/reopen/:reviewId", async (req: Request, res: Response) => {
 
     await client.query(
       `UPDATE review_queue
-       SET reviewer_action = NULL, reviewed_at = NULL,
-           reviewer_notes = COALESCE(reviewer_notes, '') || CASE WHEN COALESCE(reviewer_notes,'') = '' THEN '' ELSE ' | ' END || 'reopened:' || NOW()::text
+       SET reviewer_action = NULL, reviewed_at = NULL
        WHERE id = $1`,
       [reviewId]
     );
