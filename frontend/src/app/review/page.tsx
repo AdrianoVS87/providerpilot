@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getReviewQueue, getReviewHistory, submitReview } from "@/lib/api";
+import { getReviewQueue, getReviewHistory, submitReview, reopenReviewItem } from "@/lib/api";
 
 interface ArtifactMeta {
   id: string;
@@ -78,6 +78,23 @@ export default function ReviewPage() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Review action failed";
       alert(`Failed to ${action}: ${msg}`);
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const handleReopen = async (item: ReviewItem) => {
+    setActing(item.id);
+    try {
+      const ok = confirm("Move this item back to Pending so you can edit/approve again?");
+      if (!ok) return;
+      await reopenReviewItem(item.id);
+      setHistory((prev) => prev.filter((i) => i.id !== item.id));
+      setPending((prev) => [item, ...prev]);
+      setTimeout(() => loadAll(), 300);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Reopen failed";
+      alert(msg);
     } finally {
       setActing(null);
     }
@@ -170,7 +187,7 @@ export default function ReviewPage() {
                     </pre>
                   )}
 
-                  {view === "pending" && (
+                  {view === "pending" ? (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-3">
                       <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 min-h-[44px]"
                         disabled={acting === item.id} onClick={() => handleAction(item, "edit")}>
@@ -183,6 +200,18 @@ export default function ReviewPage() {
                       <Button size="sm" variant="destructive" className="min-h-[44px]"
                         disabled={acting === item.id} onClick={() => handleAction(item, "reject")}>
                         ❌ Reject
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="mb-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-blue-500/40 text-blue-300 min-h-[44px]"
+                        disabled={acting === item.id}
+                        onClick={() => handleReopen(item)}
+                      >
+                        {item.reviewer_action === "approve" ? "↩ Undo Approve" : "↩ Reopen to Pending"}
                       </Button>
                     </div>
                   )}
