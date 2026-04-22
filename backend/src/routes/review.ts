@@ -72,23 +72,34 @@ router.post("/:onboardingId", async (req: Request, res: Response) => {
   try {
     await client.query("BEGIN");
 
-    // Lock the specific review item(s) to prevent race conditions
-    if (stepId) {
+    // Lock the specific review item to prevent race conditions
+    if (!stepId) {
+      res.status(400).json({ error: "stepId is required to prevent accidental mass-approval" });
+      await client.query("ROLLBACK");
+      client.release();
+      return;
+    }
+
+    await client.query(
+      `SELECT id FROM review_queue WHERE onboarding_id = $1 AND step_id = $2 AND reviewer_action IS NULL FOR UPDATE`,
+      [onboardingId, stepId]
+    );
+
+    if (action === "edit") {
+      // Edit Draft: keep item pending (do NOT set reviewer_action)
       await client.query(
-        `SELECT id FROM review_queue WHERE onboarding_id = $1 AND step_id = $2 AND reviewer_action IS NULL FOR UPDATE`,
-        [onboardingId, stepId]
+        `UPDATE review_queue
+         SET reviewer_notes = COALESCE($3, reviewer_notes)
+         WHERE onboarding_id = $1 AND step_id = $2 AND reviewer_action IS NULL`,
+        [onboardingId, stepId, notes || "Edited in dashboard"]
       );
+    } else {
+      // Approve/Reject: finalize review action and move to history
       await client.query(
         `UPDATE review_queue SET reviewer_action = $2, reviewer_notes = $3, reviewed_at = NOW()
          WHERE onboarding_id = $1 AND step_id = $4 AND reviewer_action IS NULL`,
         [onboardingId, action, notes || null, stepId]
       );
-    } else {
-      // Without stepId, require explicit confirmation — don't mass-approve
-      res.status(400).json({ error: "stepId is required to prevent accidental mass-approval" });
-      await client.query("ROLLBACK");
-      client.release();
-      return;
     }
 
     if (action === "approve") {
@@ -105,7 +116,7 @@ router.post("/:onboardingId", async (req: Request, res: Response) => {
     }
 
     await client.query("COMMIT");
-    res.json({ success: true, action });
+    res.json({ success: true, action, pending: action === "edit" });
   } catch (err) {
     await client.query("ROLLBACK");
     const message = err instanceof Error ? err.message : "Review failed";

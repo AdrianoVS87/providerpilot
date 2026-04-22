@@ -59,15 +59,22 @@ export default function ReviewPage() {
         const ok = confirm("Approve this item and remove it from Pending?");
         if (!ok) return;
       }
+      if (action === "edit") {
+        const ok = confirm("Enable draft edit mode? This keeps the item in Pending and does not approve it.");
+        if (!ok) return;
+      }
 
-      await submitReview(item.onboarding_id, action, `Reviewed via dashboard`, item.step_id);
+      await submitReview(item.onboarding_id, action, action === "edit" ? "Draft edited in dashboard" : "Reviewed via dashboard", item.step_id);
 
-      // Optimistic update: remove from pending and add to top of history
-      setPending((prev) => prev.filter((i) => i.id !== item.id));
-      setHistory((prev) => [{ ...item, reviewer_action: action, reviewed_at: new Date().toISOString() }, ...prev]);
-
-      // Re-sync with backend shortly after
-      setTimeout(() => loadAll(), 400);
+      if (action === "edit") {
+        // Keep item pending; just refresh to show latest notes/state
+        setTimeout(() => loadAll(), 250);
+      } else {
+        // Approve/Reject: remove from pending and add to history
+        setPending((prev) => prev.filter((i) => i.id !== item.id));
+        setHistory((prev) => [{ ...item, reviewer_action: action, reviewed_at: new Date().toISOString() }, ...prev]);
+        setTimeout(() => loadAll(), 400);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Review action failed";
       alert(`Failed to ${action}: ${msg}`);
@@ -163,6 +170,10 @@ export default function ReviewPage() {
 
                   {view === "pending" && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-3">
+                      <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 min-h-[44px]"
+                        disabled={acting === item.id} onClick={() => handleAction(item, "edit")}>
+                        ✏️ Edit Draft
+                      </Button>
                       <Button size="sm" className="bg-green-600 hover:bg-green-700 min-h-[44px]"
                         disabled={acting === item.id} onClick={() => handleAction(item, "approve")}>
                         ✅ Approve
@@ -170,10 +181,6 @@ export default function ReviewPage() {
                       <Button size="sm" variant="destructive" className="min-h-[44px]"
                         disabled={acting === item.id} onClick={() => handleAction(item, "reject")}>
                         ❌ Reject
-                      </Button>
-                      <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 min-h-[44px]"
-                        disabled={acting === item.id} onClick={() => handleAction(item, "edit")}>
-                        ✏️ Edit & Approve
                       </Button>
                     </div>
                   )}
